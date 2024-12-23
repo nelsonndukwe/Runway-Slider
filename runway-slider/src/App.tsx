@@ -17,24 +17,24 @@ function App() {
   const overlayRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  let target = 0;
+  const target = 0;
   let current = 0;
   const ease = 0.075;
 
-  // useGSAP(() => {
-  //   const tl = gsap.timeline();
-  //   tl.from("[data-top-items]", {
-  //     x: 400,
-  //     stagger: 0.4,
-  //     duration: 1.5,
-  //     ease: "power2.out",
-  //   });
-  // }, []);
+  useGSAP(() => {
+    const tl = gsap.timeline();
+    tl.from("[data-top-items]", {
+      x: 400,
+      stagger: 0.4,
+      duration: 1.5,
+      ease: "back.out",
+    }, "")
+  }, []);
 
   let maxScroll: number;
 
-  if (carouselRef.current) {
-    maxScroll = carouselRef.current.offsetWidth - 1024;
+  if (listRef.current) {
+    maxScroll = listRef.current.offsetWidth - 1024;
   }
 
   function lerp(start: number, end: number, factor: number) {
@@ -50,25 +50,22 @@ function App() {
       childrenDivs.forEach((slide) => {
         const rect = slide.getBoundingClientRect();
         const centerPosition = (rect.left + rect.right) / 2;
-        const distanceFromCenter = centerPosition - 1024 / 2;
+        const distanceFromCenter = centerPosition -  1024 / 2;
 
         let scale, offsetX;
         if (distanceFromCenter > 0) {
-          scale = Math.min(1.75, 1 + distanceFromCenter / 1024);
+          scale = Math.min(2, 1 + distanceFromCenter /  1024);
           offsetX = (scale - 1) * 300;
         } else {
-          scale = Math.max(
-            0.5,
-            1 - Math.abs(distanceFromCenter) / 1024
-          );
+          scale = Math.max(0.8, 1 - Math.abs(distanceFromCenter) /  1024);
           offsetX = 0;
         }
 
         gsap.to(slide, {
           scale: scale,
           x: offsetX,
-          ease: "power2.out",
-          duration:1.5
+          ease: "back.out",
+          duration: 1.5,
         });
       });
     }
@@ -78,23 +75,17 @@ function App() {
     current = lerp(current, target, ease);
     gsap.to(listRef.current, {
       x: -current,
-      ease: "power2.out",
-      duration:1.5
+      ease: "back.out",
+      duration: 1.5,
     });
     updateScaleAndPosition();
     requestAnimationFrame(update);
   }
 
   window.addEventListener("resize", () => {
-    if (carouselRef.current) {
-      maxScroll = carouselRef.current.offsetWidth - 1024;
+    if (listRef.current) {
+      maxScroll = listRef.current.offsetWidth - 1024;
     }
-  });
-
-  window.addEventListener("wheel", (e) => {
-    target += e.deltaY;
-    target = Math.max(0, target);
-    target = Math.min(maxScroll, target);
   });
 
   useEffect(() => {
@@ -105,7 +96,17 @@ function App() {
     if (disableButtons) return;
     setDisableButtons(true);
     if (type === "next") {
-      // list.appendChild(items[0]);
+      if (listRef.current) {
+        gsap.to(listRef.current, {
+          scrollTo: {
+            x: listRef.current.scrollLeft + 150,
+            autoKill: false,
+          },
+          ease: "back.out",
+          duration: 1.6,
+        });
+      }
+
       setNextAnimation("next");
       if (rightCarousel.current) {
         gsap.to(rightCarousel.current, {
@@ -113,12 +114,21 @@ function App() {
             y: rightCarousel.current.scrollTop + 350,
             autoKill: false,
           },
-          ease: "power2.out",
-          duration: 1.1,
+          ease: "back.out",
+          duration: 1.6,
         });
       }
     } else if (type === "prev") {
-      // list.prepend(items[items.length - 1]);
+      if (listRef.current) {
+        gsap.to(listRef.current, {
+          scrollTo: {
+            x: listRef.current.scrollLeft - 150,
+            autoKill: false,
+          },
+          ease: "back.out",
+          duration: 1.6,
+        });
+      }
       setNextAnimation("prev");
       if (rightCarousel.current) {
         gsap.to(rightCarousel.current, {
@@ -126,8 +136,8 @@ function App() {
             y: rightCarousel.current.scrollTop - 350,
             autoKill: false,
           },
-          ease: "power2.out",
-          duration: 1.1,
+          ease: "back.out",
+          duration: 1.6,
         });
       }
     }
@@ -171,11 +181,7 @@ function App() {
               ref={listRef}
             >
               {allImages.map((image, index) => (
-                <div
-                  className="item"
-                  key={index}
-                  data-image-items
-                >
+                <div className="item" key={index} data-image-items>
                   <img src={image} alt={`image-${index}`} />
                 </div>
               ))}
