@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { allImages, topImages } from "./images";
 import "./index.css";
 import gsap from "gsap";
@@ -12,48 +12,100 @@ function App() {
   const [showDetail, setShowDetail] = useState(false);
   const [nextAnimation, setNextAnimation] = useState("idle");
   const [disableButtons, setDisableButtons] = useState(false);
-  const carouselRef = useRef(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
   const rightCarousel = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
-  useGSAP(() => {
-    const tl = gsap.timeline();
-    tl.from("[data-top-items]", {
-      x: 400,
-      stagger: 0.4,
-      duration: 1.5,
-      ease: "power2.out",
-    });
-  }, []);
+  const listRef = useRef<HTMLDivElement>(null);
 
-  // const handleClick = () => {
-  //   const tl = gsap.timeline({ defaults: {} });
-  //   tl.to("[data-image-items]", {
-  //     y: -900,
-  //     duration: 0.7,
-  //     ease: "power3.out",
-  //     stagger: 0.2,
-  //   }).to("[data-top-items]", {
+  let target = 0;
+  let current = 0;
+  const ease = 0.075;
+
+  // useGSAP(() => {
+  //   const tl = gsap.timeline();
+  //   tl.from("[data-top-items]", {
   //     x: 400,
   //     stagger: 0.4,
-  //     duration: 0.5,
+  //     duration: 1.5,
   //     ease: "power2.out",
-  //   }, ">").to(overlayRef.current, {
-  //     y: 0,
-  //     opacity:1,
-  //     autoAlpha: 1,
-  //     display: "flex",
-  //     duration: 0.7,
-  //     ease: "power3.out",
-  //   }, ">");
-  // };
+  //   });
+  // }, []);
+
+  let maxScroll: number;
+
+  if (carouselRef.current) {
+    maxScroll = carouselRef.current.offsetWidth - 1024;
+  }
+
+  function lerp(start: number, end: number, factor: number) {
+    return start + (end - start) * factor;
+  }
+
+  function updateScaleAndPosition() {
+    if (listRef.current) {
+      const childrenDivs = Array.from(
+        listRef.current.children
+      ) as HTMLElement[];
+
+      childrenDivs.forEach((slide) => {
+        const rect = slide.getBoundingClientRect();
+        const centerPosition = (rect.left + rect.right) / 2;
+        const distanceFromCenter = centerPosition - 1024 / 2;
+
+        let scale, offsetX;
+        if (distanceFromCenter > 0) {
+          scale = Math.min(1.75, 1 + distanceFromCenter / 1024);
+          offsetX = (scale - 1) * 300;
+        } else {
+          scale = Math.max(
+            0.5,
+            1 - Math.abs(distanceFromCenter) / 1024
+          );
+          offsetX = 0;
+        }
+
+        gsap.to(slide, {
+          scale: scale,
+          x: offsetX,
+          ease: "power2.out",
+          duration:1.5
+        });
+      });
+    }
+  }
+
+  function update() {
+    current = lerp(current, target, ease);
+    gsap.to(listRef.current, {
+      x: -current,
+      ease: "power2.out",
+      duration:1.5
+    });
+    updateScaleAndPosition();
+    requestAnimationFrame(update);
+  }
+
+  window.addEventListener("resize", () => {
+    if (carouselRef.current) {
+      maxScroll = carouselRef.current.offsetWidth - 1024;
+    }
+  });
+
+  window.addEventListener("wheel", (e) => {
+    target += e.deltaY;
+    target = Math.max(0, target);
+    target = Math.min(maxScroll, target);
+  });
+
+  useEffect(() => {
+    update();
+  }, []);
 
   const handleNavigation = (type: string) => {
     if (disableButtons) return;
     setDisableButtons(true);
-    const list = carouselRef.current?.querySelector(".list");
-    const items = list.querySelectorAll(".item");
     if (type === "next") {
-      list.appendChild(items[0]);
+      // list.appendChild(items[0]);
       setNextAnimation("next");
       if (rightCarousel.current) {
         gsap.to(rightCarousel.current, {
@@ -66,7 +118,7 @@ function App() {
         });
       }
     } else if (type === "prev") {
-      list.prepend(items[items.length - 1]);
+      // list.prepend(items[items.length - 1]);
       setNextAnimation("prev");
       if (rightCarousel.current) {
         gsap.to(rightCarousel.current, {
@@ -109,20 +161,20 @@ function App() {
             ref={carouselRef}
           >
             <div
-              className={`list ${
+              className={`list  ${
                 nextAnimation === "next"
                   ? "next"
                   : nextAnimation === "prev"
                   ? "prev"
                   : ""
               }`}
+              ref={listRef}
             >
               {allImages.map((image, index) => (
                 <div
                   className="item"
                   key={index}
                   data-image-items
-                  // onClick={handleClick}
                 >
                   <img src={image} alt={`image-${index}`} />
                 </div>
